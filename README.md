@@ -2,6 +2,26 @@
 
 Custom Terminal commands to easily download YouTube videos & audio in the highest available quality, and view your system's current hardware specifications.
 
+---
+
+## Quick Start (For Beginners)
+
+Not super technical? No problem! This toolkit lets you download ad-free YouTube videos/audio directly to your PC and check your system specs using simple terminal commands.
+
+### How to use it:
+1. Press your **Windows Key**, type **PowerShell**, and open it. -- Make sure you open Terminal, or Powershell. And not Windows CMD!
+2. Run the **Quick Installation** command once (see below).
+3. After that, you can use these commands anywhere:
+   - **`specs`** -> View your system's hardware specifications.
+   - **`download mp4 <link>`** -> Download video with audio.
+   - **`download mp3 <link>`** -> Download audio only.
+
+### Examples:
+```powershell
+download mp4 https://www.youtube.com/watch?v=Z81wUUjPsqM
+download mp3 https://www.youtube.com/watch?v=Z81wUUjPsqM
+```
+
 ## Usage
 
 - **`specs`**: Displays a clean overview of your hardware specifications (Motherboard, BIOS, CPU, GPU, RAM, and storage with estimated max speeds).
