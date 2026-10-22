@@ -129,6 +129,11 @@ Read-Host "Press Enter to close"
     # ----------------------------------------------------
     # 3. Manage PowerShell Profile ($PROFILE)
     # ----------------------------------------------------
+    $profileDir = Split-Path $PROFILE -Parent
+    if (!(Test-Path $profileDir)) {
+        New-Item -ItemType Directory -Force -Path $profileDir | Out-Null
+    }
+
     if (!(Test-Path -Path $PROFILE)) {
         New-Item -ItemType File -Force -Path $PROFILE | Out-Null
         Write-Host "[SUCCESS] PowerShell profile created at $PROFILE" -ForegroundColor Gray
@@ -142,17 +147,17 @@ Read-Host "Press Enter to close"
     $missingDownload = ($profileContent -notmatch "function download")
 
     if ($missingSpecs -or $missingDownload) {
-        $additions = "`n# --- Custom CLI Tools ---`n"
+        $additions = "`r`n# --- Custom CLI Tools ---`r`n"
 
         if ($missingSpecs) {
-            $additions += 'function specs { & "C:\Program Files\CustomCLI\specs.ps1" }`n'
+            $additions += "function specs { & 'C:\Program Files\CustomCLI\specs.ps1' }`r`n"
             Write-Host "[SUCCESS] Function 'specs' added to your profile." -ForegroundColor Gray
         } else {
             Write-Host "[INFO] Function 'specs' is already in your profile (already exists)." -ForegroundColor Gray
         }
 
         if ($missingDownload) {
-            $additions += @'
+            $downloadFunc = @'
 function download {
     param(
         [Parameter(Mandatory=$true)]
@@ -175,25 +180,21 @@ function download {
     }
 }
 '@
+            $additions += $downloadFunc + "`r`n"
             Write-Host "[SUCCESS] Function 'download' added to your profile." -ForegroundColor Gray
         } else {
             Write-Host "[INFO] Function 'download' is already in your profile (already exists)." -ForegroundColor Gray
         }
 
-        $profileDir = Split-Path $PROFILE -Parent
-        if (!(Test-Path $profileDir)) {
-            New-Item -ItemType Directory -Force -Path $profileDir | Out-Null
-        }
-
-        Add-Content -Path $PROFILE -Value $additions
+        Add-Content -Path $PROFILE -Value $additions -Encoding UTF8
         $changesMade = $true
     } else {
         Write-Host "[INFO] All functions were already present in your PowerShell profile. Nothing changed (already exists)." -ForegroundColor Gray
     }
 
-    # Auto-reload the profile in the current session
+    # Safe auto-reload of the profile in the current session
     if (Test-Path $PROFILE) {
-        . $PROFILE
+        . $PROFILE -ErrorAction SilentlyContinue
     }
 
     # Status Notification / Output Message
