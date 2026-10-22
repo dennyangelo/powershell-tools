@@ -76,6 +76,16 @@ try {
     $specsPath = "$cliDir\specs.ps1"
     $specsContent = @'
 Clear-Host
+Write-Host "     _                                               _       " -ForegroundColor Yellow
+Write-Host "    | |                                             | |      " -ForegroundColor Yellow
+Write-Host "  __| | ___ _ __  _ __  _   _  __ _ _ __   __ _  ___| | ___  " -ForegroundColor Yellow
+Write-Host " / _` |/ _ \ '_ \| '_ \| | | |/ _` | '_ \ / _` |/ _ \ |/ _ \ " -ForegroundColor Yellow
+Write-Host "| (_| |  __/ | | | | | | |_| | (_| | | | | (_| |  __/ | (_) |" -ForegroundColor Yellow
+Write-Host " \__,_|\___|_| |_|_| |_|\__, |\__,_|_| |_|\__, |\___|_|\___/ " -ForegroundColor Yellow
+Write-Host "                        __/ |             __/ |              " -ForegroundColor Yellow
+Write-Host "                       |___/             |___/               " -ForegroundColor Yellow
+Write-Host "-------------------------------------------------------------" -ForegroundColor Yellow
+
 $mobo = Get-CimInstance Win32_BaseBoard | Select-Object Manufacturer, Product
 $bios = Get-CimInstance Win32_BIOS | Select-Object SMBIOSBIOSVersion, ReleaseDate
 $biosDate = if ($bios.ReleaseDate) { (Get-Date $bios.ReleaseDate).ToString('yyyy-MM-dd') } else { "Unknown" }
@@ -86,14 +96,14 @@ $totalRamGB = [math]::Round(($ramSticks | Measure-Object -Property Capacity -Sum
 $ramSpeed = $ramSticks[0].Speed
 $os = Get-CimInstance Win32_OperatingSystem
 
-Write-Host " --- SYSTEM HARDWARE SPECS ---" -ForegroundColor Yellow
-Write-Host " [MOBO]  : $($mobo.Manufacturer) - $($mobo.Product)"
-Write-Host " [BIOS]  : $($bios.SMBIOSBIOSVersion) (Released: $biosDate)"
-Write-Host " [CPU]   : $($cpu.Name)"
-Write-Host " [GPU]   : $($gpu.Name -join ' / ')"
-Write-Host " [RAM]   : $totalRamGB GB ($ramSpeed MHz)"
+Write-Host " [SYSTEM HARDWARE SPECS]" -ForegroundColor Yellow
+Write-Host " [MOBO]  : $($mobo.Manufacturer) - $($mobo.Product)" -ForegroundColor Gray
+Write-Host " [BIOS]  : $($bios.SMBIOSBIOSVersion) (Released: $biosDate)" -ForegroundColor Gray
+Write-Host " [CPU]   : $($cpu.Name)" -ForegroundColor Gray
+Write-Host " [GPU]   : $($gpu.Name -join ' / ')" -ForegroundColor Gray
+Write-Host " [RAM]   : $totalRamGB GB ($ramSpeed MHz)" -ForegroundColor Gray
 
-Write-Host " [STORAGE]:" -ForegroundColor Yellow
+Write-Host "`n [STORAGE]:" -ForegroundColor Yellow
 $disks = Get-CimInstance Win32_DiskDrive
 foreach ($d in $disks) {
     $sizeGB = [math]::Round($d.Size / 1GB)
@@ -109,11 +119,11 @@ foreach ($d in $disks) {
         $maxSpeed = "~550 MB/s (SATA III Max)"
     }
 
-    Write-Host "    - [$driveLetter] $model ($sizeGB GB) -> Max: $maxSpeed"
+    Write-Host "    - [$driveLetter] $model ($sizeGB GB) -> Max: $maxSpeed" -ForegroundColor Gray
 }
 
-Write-Host " [OS]    : $($os.Caption) - $($os.Version)"
-Write-Host "--------------------------------------------"
+Write-Host "`n [OS]    : $($os.Caption) - $($os.Version)" -ForegroundColor Gray
+Write-Host "--------------------------------------------" -ForegroundColor Yellow
 Write-Host ""
 Read-Host "Press Enter to close"
 '@
@@ -168,14 +178,25 @@ function download {
         [string]$Url
     )
 
+    Clear-Host
+    Write-Host "     _                                               _       " -ForegroundColor Yellow
+    Write-Host "    | |                                             | |      " -ForegroundColor Yellow
+    Write-Host "  __| | ___ _ __  _ __  _   _  __ _ _ __   __ _  ___| | ___  " -ForegroundColor Yellow
+    Write-Host " / _` |/ _ \ '_ \| '_ \| | | |/ _` | '_ \ / _` |/ _ \ |/ _ \ " -ForegroundColor Yellow
+    Write-Host "| (_| |  __/ | | | | | | |_| | (_| | | | | (_| |  __/ | (_) |" -ForegroundColor Yellow
+    Write-Host " \__,_|\___|_| |_|_| |_|\__, |\__,_|_| |_|\__, |\___|_|\___/ " -ForegroundColor Yellow
+    Write-Host "                        __/ |             __/ |              " -ForegroundColor Yellow
+    Write-Host "                       |___/             |___/               " -ForegroundColor Yellow
+    Write-Host "-------------------------------------------------------------" -ForegroundColor Yellow
+
     $downloadFolder = "$HOME\Downloads"
 
     if ($Format -eq 'mp3') {
-        Write-Host "Downloading MP3 to Downloads..." -ForegroundColor Yellow
+        Write-Host "[INFO] Downloading MP3 to Downloads..." -ForegroundColor Yellow
         yt-dlp -P $downloadFolder -x --audio-format mp3 --audio-quality 0 $Url
     } 
     elseif ($Format -eq 'mp4') {
-        Write-Host "Downloading MP4 (with audio) to Downloads..." -ForegroundColor Yellow
+        Write-Host "[INFO] Downloading MP4 (with audio) to Downloads..." -ForegroundColor Yellow
         yt-dlp -P $downloadFolder -f "bv*[vcodec^=avc]+ba/b" --merge-output-format mp4 $Url
     }
 }

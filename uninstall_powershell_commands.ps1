@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Automatically uninstalls all tools, dependencies, and custom PowerShell commands.
+    Automatically uninstalls all tools, dependencies, and custom PowerShell commands cleanly.
 #>
 
 # Check if PowerShell is running as Administrator
@@ -68,26 +68,27 @@ try {
     }
 
     # ----------------------------------------------------
-    # 3. Clean PowerShell Profile ($PROFILE) - Bulletproof Wildcard Filter
+    # 3. Clean PowerShell Profile ($PROFILE) - Hard Chop
     # ----------------------------------------------------
     $profilePath = $PROFILE
     if (Test-Path $profilePath) {
         $lines = Get-Content $profilePath -ErrorAction SilentlyContinue
-        $cleanedLines = @()
+        $cleanLines = @()
         $modified = $false
 
         foreach ($line in $lines) {
-            # Filter elke regel eruit die naar onze toolkit of mappen verwijst
-            if ($line -like "*CustomCLI*" -or $line -like "*specs.ps1*" -or $line -like "*function specs*" -or $line -like "*function download*" -or $line -like "*Custom CLI Tools*" -or $line -like "*--merge-output-format*") {
+            # Zodra we een kenmerk van onze toolkit raken, breken we de loop direct af.
+            # Alles daaronder (inclusief wees-accolades) wordt linea recta weggegooid.
+            if ($line -like "*Custom CLI Tools*" -or $line -like "*function specs*" -or $line -like "*function download*" -or $line -like "*specs.ps1*") {
                 $modified = $true
-                continue
+                break 
             }
-            $cleanedLines += $line
+            $cleanLines += $line
         }
 
         if ($modified) {
-            Set-Content -Path $profilePath -Value $cleanedLines -Encoding UTF8
-            Write-Host "[SUCCESS] Custom commands and residual code successfully wiped from your profile." -ForegroundColor Gray
+            Set-Content -Path $profilePath -Value $cleanLines -Encoding UTF8
+            Write-Host "[SUCCESS] Custom commands and all residual code successfully wiped from your profile." -ForegroundColor Gray
             $removedAny = $true
         } else {
             Write-Host "[INFO] Custom commands were not found in your profile, therefore we didn't modify anything." -ForegroundColor Gray
@@ -96,7 +97,7 @@ try {
         Write-Host "[INFO] PowerShell profile was not found, therefore we didn't modify anything." -ForegroundColor Gray
     }
 
-    # Auto-reload profile in current session
+    # Safe auto-reload profile in current session
     if (Test-Path $PROFILE) {
         . $PROFILE -ErrorAction SilentlyContinue
     }
