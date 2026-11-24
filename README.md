@@ -35,12 +35,12 @@ download mp3 https://www.youtube.com/watch?v=Z81wUUjPsqM
 Open **PowerShell as Administrator** and run the following command to automatically download and install everything:
 
 ```powershell
-irm "https://raw.githubusercontent.com/dennyangelo/powershell-tools/main/setup_powershell_commands.ps1" | iex
+irm "https://raw.githubusercontent.com/dennyangelo/powershell-tools/main/setup_powershell_commands.ps1?nocache=$(Get-Random)" | iex
 ```
 
 ## Quick Uninstallation
 ```powershell
-irm "https://raw.githubusercontent.com/dennyangelo/powershell-tools/main/uninstall_powershell_commands.ps1" | iex
+irm "https://raw.githubusercontent.com/dennyangelo/powershell-tools/main/uninstall_powershell_commands.ps1?nocache=$(Get-Random)" | iex
 ```
 
 Suggestions are welcome! If you have ideas for any commands that improve QOL, suggest them and I'll add it! Feel free to open an issue or leave your suggestions on the GitHub Issues page.
