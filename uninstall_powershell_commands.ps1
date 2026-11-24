@@ -13,15 +13,12 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 Clear-Host
 
 # ASCII Header in Yellow (dennyangelo)
-Write-Host "     _                                               _       " -ForegroundColor Yellow
-Write-Host "    | |                                             | |      " -ForegroundColor Yellow
-Write-Host "  __| | ___ _ __  _ __  _   _  __ _ _ __   __ _  ___| | ___  " -ForegroundColor Yellow
-Write-Host " / _` |/ _ \ '_ \| '_ \| | | |/ _` | '_ \ / _` |/ _ \ |/ _ \ " -ForegroundColor Yellow
-Write-Host "| (_| |  __/ | | | | | | |_| | (_| | | | | (_| |  __/ | (_) |" -ForegroundColor Yellow
-Write-Host " \__,_|\___|_| |_|_| |_|\__, |\__,_|_| |_|\__, |\___|_|\___/ " -ForegroundColor Yellow
-Write-Host "                        __/ |             __/ |              " -ForegroundColor Yellow
-Write-Host "                       |___/             |___/               " -ForegroundColor Yellow
-Write-Host "-------------------------------------------------------------" -ForegroundColor Yellow
+Write-Host "     _                                      _      " -ForegroundColor Yellow
+Write-Host "  __| |___ _ _  _ _ _  _ __ _ _ _  __ _ ___| |___  " -ForegroundColor Yellow
+Write-Host " / _` / -_) ' \| ' \ || / _` | ' \/ _` / -_) / _ \ " -ForegroundColor Yellow
+Write-Host " \__,_\___|_||_|_||_\_, \__,_|_||_\__, \___|\___/ " -ForegroundColor Yellow
+Write-Host "                    |__/          |___/            " -ForegroundColor Yellow
+Write-Host "--------------------------------------------------" -ForegroundColor Yellow
 
 try {
     Write-Host "[INFO] Starting uninstallation of PowerShell Toolkit..." -ForegroundColor Yellow
@@ -33,26 +30,20 @@ try {
     # ----------------------------------------------------
     Write-Host "[INFO] Checking required packages (yt-dlp & FFmpeg)..." -ForegroundColor Gray
 
-    # Remove yt-dlp
-    $ytdlpCheck = Get-Command yt-dlp -ErrorAction SilentlyContinue
-    if ($ytdlpCheck) {
-        Write-Host "[INFO] yt-dlp is installed. Uninstalling via winget..." -ForegroundColor Gray
-        winget uninstall --id yt-dlp.yt-dlp --silent --accept-source-agreements 2>&1 | Out-Null
-        Write-Host "[SUCCESS] yt-dlp successfully uninstalled." -ForegroundColor Gray
-        $removedAny = $true
-    } else {
-        Write-Host "[INFO] yt-dlp was not installed, therefore we didn't uninstall anything." -ForegroundColor Gray
-    }
+    $hasYtDlp = [bool](Get-Command yt-dlp -ErrorAction SilentlyContinue)
+    $hasFfmpeg = [bool](Get-Command ffmpeg -ErrorAction SilentlyContinue)
 
-    # Remove FFmpeg
-    $ffmpegCheck = Get-Command ffmpeg -ErrorAction SilentlyContinue
-    if ($ffmpegCheck) {
-        Write-Host "[INFO] FFmpeg is installed. Uninstalling via winget..." -ForegroundColor Gray
-        winget uninstall --id Gyan.FFmpeg --silent --accept-source-agreements 2>&1 | Out-Null
-        Write-Host "[SUCCESS] FFmpeg successfully uninstalled." -ForegroundColor Gray
+    if ($hasYtDlp -or $hasFfmpeg) {
+        Write-Host "[INFO] Uninstalling packages (yt-dlp & FFmpeg) via winget..." -ForegroundColor Gray
+        winget uninstall yt-dlp.yt-dlp Gyan.FFmpeg --silent --accept-source-agreements 2>&1 | Out-Null
+        
+        # Ververs de omgevingsvariabelen (PATH) direct in deze sessie
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        
+        Write-Host "[SUCCESS] Packages successfully uninstalled." -ForegroundColor Gray
         $removedAny = $true
     } else {
-        Write-Host "[INFO] FFmpeg was not installed, therefore we didn't uninstall anything." -ForegroundColor Gray
+        Write-Host "[INFO] yt-dlp and FFmpeg were not installed, therefore nothing was uninstalled." -ForegroundColor Gray
     }
 
     # ----------------------------------------------------
@@ -64,7 +55,7 @@ try {
         Write-Host "[SUCCESS] CustomCLI directory successfully removed." -ForegroundColor Gray
         $removedAny = $true
     } else {
-        Write-Host "[INFO] CustomCLI directory was not found, therefore we didn't remove anything." -ForegroundColor Gray
+        Write-Host "[INFO] CustomCLI directory was not found, therefore nothing was removed." -ForegroundColor Gray
     }
 
     # ----------------------------------------------------
@@ -91,15 +82,18 @@ try {
             Write-Host "[SUCCESS] Custom commands and all residual code successfully wiped from your profile." -ForegroundColor Gray
             $removedAny = $true
         } else {
-            Write-Host "[INFO] Custom commands were not found in your profile, therefore we didn't modify anything." -ForegroundColor Gray
+            Write-Host "[INFO] Custom commands were not found in your profile, therefore nothing was modified." -ForegroundColor Gray
         }
     } else {
-        Write-Host "[INFO] PowerShell profile was not found, therefore we didn't modify anything." -ForegroundColor Gray
+        Write-Host "[INFO] PowerShell profile was not found, therefore nothing was modified." -ForegroundColor Gray
     }
 
-    # Safe auto-reload profile in current session
+    # Verwijder de ingeladen functies direct uit het geheugen van de sessie en herlaad het profiel
+    Remove-Item -Path Function:\specs -ErrorAction SilentlyContinue
+    Remove-Item -Path Function:\download -ErrorAction SilentlyContinue
+
     if (Test-Path $PROFILE) {
-        . $PROFILE -ErrorAction SilentlyContinue
+        . ([scriptblock]::Create("$(Get-Content -Path $PROFILE -Raw)"))
     }
 
     # Final Status Notification
