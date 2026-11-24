@@ -100,13 +100,14 @@ Read-Host "Press Enter to close"
 '@
     Set-Content -Path $specsPath -Value $specsContent -Encoding UTF8
 
-    # 4. Schrijf functies naar ALLE PowerShell profielen (PS 5.1 én PS 7)
-    $docsPath = [Environment]::GetFolderPath("MyDocuments")
-    $targetProfiles = @(
-        $PROFILE,
-        "$docsPath\WindowsPowerShell\Microsoft.PowerShell_profile.ps1",
-        "$docsPath\PowerShell\Microsoft.PowerShell_profile.ps1"
-    ) | Select-Object -Unique
+# 4. Schrijf functies naar het actieve $PROFILE
+    $profileDir = Split-Path $PROFILE -Parent
+    if (!(Test-Path $profileDir)) {
+        New-Item -ItemType Directory -Force -Path $profileDir | Out-Null
+    }
+    if (!(Test-Path -Path $PROFILE)) {
+        New-Item -ItemType File -Force -Path $PROFILE | Out-Null
+    }
 
     $profileBlock = @'
 
@@ -144,28 +145,14 @@ function download {
 }
 '@
 
-    foreach ($p in $targetProfiles) {
-        $pDir = Split-Path $p -Parent
-        if (!(Test-Path $pDir)) { New-Item -ItemType Directory -Force -Path $pDir | Out-Null }
-        if (!(Test-Path $p)) { New-Item -ItemType File -Force -Path $p | Out-Null }
-
-        $existing = Get-Content -Path $p -Raw -ErrorAction SilentlyContinue
-        if ($existing -notmatch "Custom CLI Tools") {
-            Add-Content -Path $p -Value $profileBlock -Encoding UTF8
-            Write-Host "[SUCCESS] Profile updated: $p" -ForegroundColor Gray
-        }
+    $existing = Get-Content -Path $PROFILE -Raw -ErrorAction SilentlyContinue
+    if ($existing -notmatch "Custom CLI Tools") {
+        Add-Content -Path $PROFILE -Value $profileBlock -Encoding UTF8
+        Write-Host "[SUCCESS] Profile updated: $PROFILE" -ForegroundColor Gray
     }
 
-    # Laad de functies direct in de huidige sessie
-    if (Test-Path $PROFILE) {
-        . ([scriptblock]::Create("$(Get-Content -Path $PROFILE -Raw)"))
-    }
-
-    Write-Host "`nInstallation completed! Available commands:" -ForegroundColor Yellow
-    Write-Host '  download mp4 "yt-link"' -ForegroundColor Gray
-    Write-Host '  download mp3 "yt-link"' -ForegroundColor Gray
-    Write-Host '  specs' -ForegroundColor Gray
-}
-catch {
+    # Forceer de functies in de GLOBAL scope (nodig omdat irm | iex in een child-scope draait)
+    $globalBlock = $profileBlock -replace 'function specs', 'function global:specs' -replace 'function download', 'function global:download'
+    Invoke-Expression $globalBlock
     Write-Host "`n[ERROR] $($_.Exception.Message)" -ForegroundColor Yellow
 }
