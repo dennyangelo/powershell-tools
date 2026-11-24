@@ -3,7 +3,6 @@
     Automatically installs and configures all tools, dependencies, and custom PowerShell commands.
 #>
 
-# Check if PowerShell is running as Administrator
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Host "[ERROR] Please run PowerShell as Administrator (Right-click -> Run as Administrator)." -ForegroundColor Yellow
     return
@@ -11,7 +10,6 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 
 Clear-Host
 
-# ASCII Header in Yellow (dennyangelo)
 Write-Host "     _                                      _      " -ForegroundColor Yellow
 Write-Host "  __| |___ _ _  _ _ _  _ __ _ _ _  __ _ ___| |___  " -ForegroundColor Yellow
 Write-Host " / _` / -_) ' \| ' \ || / _` | ' \/ _` / -_) / _ \ " -ForegroundColor Yellow
@@ -22,45 +20,31 @@ Write-Host "--------------------------------------------------" -ForegroundColor
 try {
     Write-Host "[INFO] Starting installation of PowerShell tools and dependencies..." -ForegroundColor Yellow
 
-    $changesMade = $false
+    # 1. ExecutionPolicy instellen voor zowel huidige gebruiker als machine
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force -ErrorAction SilentlyContinue
 
-    # Zorg dat PowerShell lokaal aangemaakte profielscripts mag uitvoeren
-    if ((Get-ExecutionPolicy -Scope CurrentUser) -notin @('RemoteSigned', 'Unrestricted', 'Bypass')) {
-        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
-        Write-Host "[SUCCESS] ExecutionPolicy set to RemoteSigned." -ForegroundColor Gray
-    }
-
-    # ----------------------------------------------------
-    # 1. Check and install dependencies (yt-dlp & FFmpeg)
-    # ----------------------------------------------------
+    # 2. Check & installeer yt-dlp en FFmpeg
     Write-Host "[INFO] Checking required packages (yt-dlp & FFmpeg)..." -ForegroundColor Gray
 
     $needYtDlp = -not (Get-Command yt-dlp -ErrorAction SilentlyContinue)
     $needFfmpeg = -not (Get-Command ffmpeg -ErrorAction SilentlyContinue)
 
     if ($needYtDlp -or $needFfmpeg) {
-        Write-Host "[INFO] Installing missing packages (yt-dlp & FFmpeg) machine-wide via winget..." -ForegroundColor Gray
+        Write-Host "[INFO] Installing packages via winget..." -ForegroundColor Gray
         winget install yt-dlp.yt-dlp Gyan.FFmpeg --scope machine --silent --accept-source-agreements --accept-package-agreements
         
-        if ($?) {
-            Write-Host "[SUCCESS] Packages successfully installed." -ForegroundColor Gray
-            $changesMade = $true
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-        } else {
-            Write-Host "[ERROR] Winget installation encountered an issue." -ForegroundColor Yellow
-        }
+        # Ververs PATH inclusief WinGet Links map
+        $wingetLinks = "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User") + ";" + $wingetLinks
+        Write-Host "[SUCCESS] Packages installed and PATH refreshed." -ForegroundColor Gray
     } else {
         Write-Host "[INFO] yt-dlp and FFmpeg are already installed." -ForegroundColor Gray
     }
 
-    # ----------------------------------------------------
-    # 2. Manage specs.ps1 tool in C:\Program Files\CustomCLI
-    # ----------------------------------------------------
+    # 3. Plaats specs.ps1 in C:\Program Files\CustomCLI
     $cliDir = "C:\Program Files\CustomCLI"
     if (!(Test-Path $cliDir)) {
         New-Item -ItemType Directory -Force -Path $cliDir | Out-Null
-        Write-Host "[SUCCESS] Created directory: $cliDir" -ForegroundColor Gray
-        $changesMade = $true
     }
 
     $specsPath = "$cliDir\specs.ps1"
@@ -114,39 +98,21 @@ Write-Host "--------------------------------------------------" -ForegroundColor
 Write-Host ""
 Read-Host "Press Enter to close"
 '@
-
     Set-Content -Path $specsPath -Value $specsContent -Encoding UTF8
-    Write-Host "[SUCCESS] Specs script placed at $specsPath" -ForegroundColor Gray
-    $changesMade = $true
 
-    # ----------------------------------------------------
-    # 3. Manage PowerShell Profile ($PROFILE)
-    # ----------------------------------------------------
-    $profileDir = Split-Path $PROFILE -Parent
-    if (!(Test-Path $profileDir)) {
-        New-Item -ItemType Directory -Force -Path $profileDir | Out-Null
-    }
+    # 4. Schrijf functies naar ALLE PowerShell profielen (PS 5.1 én PS 7)
+    $docsPath = [Environment]::GetFolderPath("MyDocuments")
+    $targetProfiles = @(
+        $PROFILE,
+        "$docsPath\WindowsPowerShell\Microsoft.PowerShell_profile.ps1",
+        "$docsPath\PowerShell\Microsoft.PowerShell_profile.ps1"
+    ) | Select-Object -Unique
 
-    if (!(Test-Path -Path $PROFILE)) {
-        New-Item -ItemType File -Force -Path $PROFILE | Out-Null
-        Write-Host "[SUCCESS] PowerShell profile created at $PROFILE" -ForegroundColor Gray
-        $changesMade = $true
-    }
+    $profileBlock = @'
 
-    $profileContent = Get-Content -Path $PROFILE -Raw -ErrorAction SilentlyContinue
-    $missingSpecs = ($profileContent -notmatch "function specs")
-    $missingDownload = ($profileContent -notmatch "function download")
+# --- Custom CLI Tools ---
+function specs { & 'C:\Program Files\CustomCLI\specs.ps1' }
 
-    if ($missingSpecs -or $missingDownload) {
-        $additions = "`r`n# --- Custom CLI Tools ---`r`n"
-
-        if ($missingSpecs) {
-            $additions += "function specs { & 'C:\Program Files\CustomCLI\specs.ps1' }`r`n"
-            Write-Host "[SUCCESS] Function 'specs' added to your profile." -ForegroundColor Gray
-        }
-
-        if ($missingDownload) {
-            $downloadFunc = @'
 function download {
     param(
         [Parameter(Mandatory=$true)]
@@ -177,12 +143,17 @@ function download {
     }
 }
 '@
-            $additions += $downloadFunc + "`r`n"
-            Write-Host "[SUCCESS] Function 'download' added to your profile." -ForegroundColor Gray
-        }
 
-        Add-Content -Path $PROFILE -Value $additions -Encoding UTF8
-        $changesMade = $true
+    foreach ($p in $targetProfiles) {
+        $pDir = Split-Path $p -Parent
+        if (!(Test-Path $pDir)) { New-Item -ItemType Directory -Force -Path $pDir | Out-Null }
+        if (!(Test-Path $p)) { New-Item -ItemType File -Force -Path $p | Out-Null }
+
+        $existing = Get-Content -Path $p -Raw -ErrorAction SilentlyContinue
+        if ($existing -notmatch "Custom CLI Tools") {
+            Add-Content -Path $p -Value $profileBlock -Encoding UTF8
+            Write-Host "[SUCCESS] Profile updated: $p" -ForegroundColor Gray
+        }
     }
 
     # Laad de functies direct in de huidige sessie
@@ -190,14 +161,11 @@ function download {
         . ([scriptblock]::Create("$(Get-Content -Path $PROFILE -Raw)"))
     }
 
-    Write-Host ""
-    Write-Host "Installation completed and profile reloaded! You can use:" -ForegroundColor Yellow
+    Write-Host "`nInstallation completed! Available commands:" -ForegroundColor Yellow
     Write-Host '  download mp4 "yt-link"' -ForegroundColor Gray
     Write-Host '  download mp3 "yt-link"' -ForegroundColor Gray
     Write-Host '  specs' -ForegroundColor Gray
-
 }
 catch {
-    Write-Host "`n[ERROR] An error occurred during installation:" -ForegroundColor Yellow
-    Write-Host $_.Exception.Message -ForegroundColor Gray
+    Write-Host "`n[ERROR] $($_.Exception.Message)" -ForegroundColor Yellow
 }
